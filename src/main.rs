@@ -124,7 +124,8 @@ fn open_connected_cells(
     real_board: &mut Vec<Vec<char>>,
     display_board: &mut Vec<Vec<char>>,
     xaxis: isize,
-    yaxis: isize
+    yaxis: isize,
+    win_count:&mut u32
 ) {
     let rows = real_board.len() as isize;
     let cols = real_board[0].len() as isize;
@@ -141,25 +142,28 @@ fn open_connected_cells(
     if real_board[xaxis as usize][yaxis as usize] != '0' && real_board[xaxis as usize][yaxis as usize] != '*'
         && display_board[xaxis as usize][yaxis as usize] == '\u{2588}' {
         display_board[xaxis as usize][yaxis as usize] = real_board[xaxis as usize][yaxis as usize];
+        *win_count+=1;
     }
 
     else if real_board[xaxis as usize][yaxis as usize] == '0' && display_board[xaxis as usize][yaxis as usize] == '\u{2588}' {
         display_board[xaxis as usize][yaxis as usize] = '-';
-        open_connected_cells(real_board, display_board, xaxis - 1, yaxis - 1);
-        open_connected_cells(real_board, display_board, xaxis - 1, yaxis);
-        open_connected_cells(real_board, display_board, xaxis - 1, yaxis + 1);
-        open_connected_cells(real_board, display_board, xaxis, yaxis - 1);
-        open_connected_cells(real_board, display_board, xaxis, yaxis + 1);
-        open_connected_cells(real_board, display_board, xaxis + 1, yaxis - 1);
-        open_connected_cells(real_board, display_board, xaxis + 1, yaxis);
-        open_connected_cells(real_board, display_board, xaxis + 1, yaxis + 1);
+        open_connected_cells(real_board, display_board, xaxis - 1, yaxis - 1,win_count);
+        open_connected_cells(real_board, display_board, xaxis - 1, yaxis,win_count);
+        open_connected_cells(real_board, display_board, xaxis - 1, yaxis + 1,win_count);
+        open_connected_cells(real_board, display_board, xaxis, yaxis - 1,win_count);
+        open_connected_cells(real_board, display_board, xaxis, yaxis + 1,win_count);
+        open_connected_cells(real_board, display_board, xaxis + 1, yaxis - 1,win_count);
+        open_connected_cells(real_board, display_board, xaxis + 1, yaxis,win_count);
+        open_connected_cells(real_board, display_board, xaxis + 1, yaxis + 1,win_count);
     }
 }
-fn open_cells(real_board: &mut Vec<Vec<char>>,display_board: &mut Vec<Vec<char>>,xaxis:u32,yaxis:u32) -> bool{
+fn open_cells(real_board: &mut Vec<Vec<char>>,display_board: &mut Vec<Vec<char>>,
+              xaxis:u32,yaxis:u32,win_count:&mut u32) -> bool{
     let x1=xaxis as usize;
     let y1=yaxis as usize;
     if real_board[x1][y1] != '0' && real_board[x1][y1] != '*' && display_board[x1][y1] == '\u{2588}'{
         display_board[x1][y1]=real_board[x1][y1];
+        *win_count+=1;
         return true;
     }
     else if real_board[x1][y1] == '*' && display_board[x1][y1] == '\u{2588}'{
@@ -167,17 +171,29 @@ fn open_cells(real_board: &mut Vec<Vec<char>>,display_board: &mut Vec<Vec<char>>
         return false;
     }
     else if real_board[x1][y1] == '0' && display_board[x1][y1] == '\u{2588}' {
-        open_connected_cells(real_board,display_board,xaxis as isize,yaxis as isize);
+        open_connected_cells(real_board,display_board,xaxis as isize,yaxis as isize,win_count);
+        return true;
     }
-    return false;
+
+    return true;
 }
 
-fn to_opt(real_board: &mut Vec<Vec<char>>,display_board: &mut Vec<Vec<char>>,path: &char,xaxis:u32,yaxis:u32){
+fn to_opt(real_board: &mut Vec<Vec<char>>,display_board: &mut Vec<Vec<char>>,
+          path: &char,xaxis:u32,yaxis:u32,
+          win_count:&mut u32,flag_count:&mut u32){
     if *path == 'f'{
         display_board[xaxis as usize][yaxis as usize] = 'F';
+        *flag_count+=1;
     }
     else if *path == 'o'{
-        open_cells(real_board,display_board,xaxis,yaxis);
+       if open_cells(real_board,display_board,xaxis,yaxis,win_count){
+           return;
+       }
+        else {
+            clear_screen();
+            print_any_board(&real_board);
+            panic!("You lost!!");
+        }
     }
 
 }
@@ -200,15 +216,15 @@ fn main() {
     let mut real_board: Vec<Vec<char>>=vec![vec!['0';9];9]; let mut disp_board: Vec<Vec<char>>=vec![vec!['\u{2588}';9];9];
     let mut xaxis=String::new(); let mut yaxis=String::new();
     let msg_x=String::from("Enter x-axis: "); let msg_y=String::from("Enter y-axis: ");
-    let mut validator:u32=0;
+    let mut validator:u32 = 0; let mut win_count:u32 = 0; let mut flag_count:u32 = 0;
     loop{
         clear_screen();
         welcome_strings();
         print_any_board(&disp_board);
         input_dims(&mut xaxis,&msg_x);
         input_dims(&mut yaxis,&msg_y);
-        let mut xaxis:u32=input_parser(&xaxis,&mut validator);
-        let mut yaxis:u32=input_parser(&yaxis,&mut validator);
+        let xaxis:u32=input_parser(&xaxis,&mut validator);
+        let yaxis:u32=input_parser(&yaxis,&mut validator);
         if xaxis > 8 || yaxis > 8{
             continue;
         }
@@ -216,10 +232,12 @@ fn main() {
             mines_generator(&mut real_board);
         }
         let opts:char = options();
-        to_opt(&mut real_board,&mut disp_board,&opts,xaxis,yaxis);
-
+        to_opt(&mut real_board,&mut disp_board,&opts,xaxis,yaxis,&mut win_count,&mut flag_count);
+        if real_board.len() as u32 * real_board[0].len() as u32 - win_count == 10 && flag_count == 10{
+            print!("You won!!");
+            break;
+        }
 
     }
-
 
 }
