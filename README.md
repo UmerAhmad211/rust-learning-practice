@@ -1,3 +1,3 @@
 
-Rust Practice, to keep logs on how far i have come.
+Rust Practice, to keep track of my progress.
 
