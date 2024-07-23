@@ -24,6 +24,8 @@ struct tweet {
     retweet: bool,
 }
 
+//if in mod in another file i.e lib.rs then struct vars should be pub ?? and struct should be pub ??
+
 impl summary for tweet {
     // fn summarize(&self) -> String {
     //   format!("{}: {}", self.username, self.content)
